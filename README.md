@@ -1,7 +1,8 @@
 
 # Project template
 
-This repository contains a project template.
+This repository contains a project template. Most of the content is 
+based on the [template](https://github.com/jrm87/projecttemplate) by [Jonathan Dingle](http://www.jdingel.com/)
 I intend this repo as the common starting point for research projects.
 It can also be used to onboard new co-authors and research assistants.
 Download the repository and compile `logbook/logbook.tex` to get started.

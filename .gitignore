@@ -1,0 +1,17 @@
+# Ignore common LaTeX intermediate and output files
+*.aux
+*.bbl
+*.blg
+*.brf
+*.dvi
+*.log
+*.lof
+*.lot
+*.toc
+*.fls
+*.out
+*.synctex.gz
+*.fdb_latexmk
+*.nav
+*.snm
+*.vrb

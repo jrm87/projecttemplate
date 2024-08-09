@@ -1,9 +1,48 @@
-If scientific computing lives at the Linux command line,
-then being a Windows users can be tricky.
-The two parts of our workflow that are most difficult to implement on Windows
+Most of the code here would use the `*`nix commands, 
+but there are ways of implementing in on Windows machines. 
+According to Dingle, the two parts of our workflow that are most difficult to implement on Windows
 are executing Makefiles and creating symbolic links.
 
-For now, we recommend simply installing Ubuntu on Windows Subsystem for Linux (WSL).
+I still need to check for WSL, but I don't think this is correct for symbolic links. 
+
+See here for a \href{https://www.howtogeek.com/16226/complete-guide-to-symbolic-links-symlinks-on-windows-or-linux/}{Guide}:
+\begin{enumerate}
+    \item Run Command Prompt as admin
+    \item Run:
+    \begin{enumerate}
+        \item **soft** link to file: `mklink Link Target`
+        \item **soft** link to directory: `mklink /D Link Target`
+        \item **hard** link to file: `mklink /H Link Target`
+        \item **hard** link to directory: `mklink /J Link Target`
+    \end{enumerate}
+\end{enumerate}
+
+\textcolor{red}{WARNING:} If using paths with space, need to use double quotes. 
+Example:
+\begin{lstlisting}[language=make]
+        mklink /J "C:\Link To Folder" "C:\Users\Name\Original Folder"
+\end{lstlisting}
+
+\paragraph{Usage:}
+I have used them in:
+\begin{itemize}
+    \item Integrating Github MOC with Dropbox, so Git stores code and Dropbox data and output. 
+    \begin{itemize}
+        \item Each time the git repository is cloned, for the code to see the data you create a symlink to the corresponding Dropbox data and output folder.
+        \item Example:
+        \item Data: 
+        \begin{lstlisting}[language=make]
+            mklink /J "C:\Users\hql910\git\pol_lan\data" "D:\Dropbox\police_language_rep\pol_lan\data"
+        \end{lstlisting}
+        \item Output: 
+        \begin{lstlisting}[language=make]
+            mklink /J "C:\Users\hql910\git\pol_lan\output" "D:\Dropbox\police_language_rep\pol_lan\output"
+        \end{lstlisting}
+    \end{itemize}
+\end{itemize}
+
+
+For WSL, the recommendation is simply installing Ubuntu on Windows Subsystem for Linux (WSL).
 Here are instructions:
 \href{https://ubuntu.com/tutorials/install-ubuntu-on-wsl2-on-windows-10}{Install Ubuntu on WSL2 on Windows 10}.
 You will need to install the Linux versions of all applications, such as R, LaTeX, and Stata.
