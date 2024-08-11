@@ -1,9 +1,19 @@
-These are Jonathan's standards and he's willing to argue for them.
-
+These should be the guidelines for visuals. 
 \begin{itemize}
 	\item Generally, follow Edward Tufte's \href{https://www.edwardtufte.com/tufte/books_vdqi}{\textit{Visual Display of Quantitative Information}}. 
 	Mostly important, maximize the \href{https://www.coursera.org/learn/python-plotting/lecture/qFnP9/graphical-heuristics-data-ink-ratio-edward-tufte}{data-ink ratio}.
 	\item At minimum, let's adhere to Schwabish ``\href{https://www.aeaweb.org/articles?id=10.1257/jep.28.1.209}{An Economist's Guide to Visualizing Data}'' (\textit{JEP} 2014) 
 	\item Never make a graphic with fewer than a dozen data points. A dozen data points belong in a table.
-	\item Please impose \texttt{graphregion(color(white))} on every \texttt{twoway} plot created in Stata.
+	\item In Stata, set up \href{https://www.jmorenomedina.com/s/scheme-myscheme.scheme}{this scheme}. You need to download it
+	to  ".../Stata/ado/base/s" in your computer. Then run in Stata: "set scheme myscheme, permanently" to use it.
+	\item In Stata, at the very least, use \texttt{graphregion(color(white))} on every \texttt{twoway} plot created in Stata.
+	\item in R, use \texttt{theme\_minimal()} from the \texttt{ggplot2} package, and dashed lightgray background lines. 
+	\begin{lstlisting}[language=R]
+		theme_minimal() +
+		theme(axis.text.x = element_text(angle = 0, hjust = 1),
+			panel.grid.major = element_blank(),  # Remove major grid lines
+			panel.grid.minor = element_blank(),  # Remove minor grid lines
+			panel.background = element_rect(fill = "white", color = NA),  # Set background color to white without border
+			panel.grid.major.y = element_line(color = "lightgray", linetype = "dashed", linewidth = 0.2)) + # Add light gray dashed lines for y-axis ticks 
+	\end{lstlisting}
 \end{itemize}
