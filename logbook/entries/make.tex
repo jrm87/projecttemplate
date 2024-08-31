@@ -46,10 +46,13 @@ The following code is an excerpt from a Makefile that downloads Census data and 
 \end{lstlisting}
 The first rule concerns the target \texttt{../output/mi\_od\_main\_JT01\_2010.csv}.
 The target lists a compressed file as its one pre-requisite.
-If the target does not exist or if the target is older than (any of) the pre-requisite(s) listed after the colon,
-then the recipe for that target is executed.
-The recipe for this target is simple: use \texttt{gunzip} to decompress the pre-requisite and write it to the target.
+If the \textbf{target does not exist} or if the \textbf{target is older than (any of) the pre-requisite(s)} listed after the colon,
+\textbf{then the recipe for that target is executed}. That means that make operates based on the timestamps of the files. If the dependencies have not been modified since the last time the target was built, 
+make assumes that the target is up-to-date and does not need to be rebuilt. Therefore, it will not execute the commands and the output file will not be updated.
 
+If you want to force make to always execute the commands and update the output file, regardless of whether the dependencies have changed, you can make the target \texttt{.PHONY}.
+
+The recipe for this target is simple: use \texttt{gunzip} to decompress the pre-requisite and write it to the target.
 Let's unpack that recipe in detail.
 \href{https://linux.die.net/man/1/gunzip}{gunzip} takes a list of files on its command line and replaces each file whose name ends with .gz, -gz, .z, -z, \_z or .Z with an uncompressed file without the original extension.
 \texttt{-c} is an option that writes output on standard output and keeps original files unchanged.
