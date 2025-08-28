@@ -1,21 +1,34 @@
 #!/bin/bash
-#Script to generate graph of tasks
+# Script to generate a dependency graph from task symlink-creation scripts
 
-echo -e 'digraph G {' > ../output/graph.txt
+output_file="../output/graph.txt"
+temp_edges=$(mktemp)
 
-find ../../*/code -depth 1 -name "Makefile" | xargs grep -o 'input.*:.*output' |
-sed 's/\.\.\/\.\.\///g' | #Drop leading relative path ../../ from start of line
-sed 's/\/code\/Makefile:input.*:/ \->/' | sed 's/\/output$//' | sed 's/ | / /' | #Drop folders and file names; show only tasks
-awk -F' -> ' '{ print $2 " -> " $1}' | #Flip order to reflect task flow, not symbolic link direction
-sort | uniq >> ../output/graph.txt
+echo 'digraph G {' > "$output_file"
 
-find ../../*/code -name "Makefile" | xargs grep 'ln ' |
-grep -v 'ln \-s \$[<|] \$@' | # Drop recipes that don't show target (these ought to be handled differently)
-sed 's/\.\.\/\.\.\///g' | #Drop leading relative path ../../ from start of line
-sed 's/if \[.*\] ; then ln \-s//' | sed 's/; else exit 1; fi//'    | #drop if statement components
-sed 's/\/code\/Makefile\:/ \->/' | sed 's/\/output\/.*//'  | sed 's/\/code\/.*//' | #drop within-task directories
-grep -v '[[:space:]]*[A-Za-z_]*\/input\/' | #Drop symbolic links that point to 'input' folders
-sed 's/[[:space:]]*//g' | awk -F'->' '{ print $2 "->" $1}' | #sed 's/\->/ \-> /' | #Drop all spaces; put spaces around symbolic link arrow
-sort | uniq >> ../output/graph.txt
+# Look for Makefile dependencies that follow the pattern: 
+#   input/...: ../<src_task>/output/...
+find ../../* -maxdepth 2 -type f -name "Makefile" | while read -r makefile; do
+    # For each Makefile, look for lines matching the pattern "input.*:.*output"
+    grep -o 'input.*:.*output' "$makefile" | while read -r dep_line; do
+        # dep_line example:
+        # input/texts/meta/%: ../text_for_embedding/output/texts/meta/% | input/texts/meta
+        if [[ $dep_line =~ :[[:space:]]*\.\./([^/]+)/output ]]; then
+            src_task="${BASH_REMATCH[1]}"
+        else
+            continue
+        fi
+        # Determine the current (target) task from the Makefile location.
+        # Remove the leading ../../ and any trailing /code.
+        task=$(dirname "$makefile" | sed 's|\.\./\.\./||' | sed 's/\/code$//')
+        # Write the edge to the temporary file.
+        echo "\"$src_task\" -> \"$task\"" >> "$temp_edges"
+    done
+done
 
-echo '}' >> ../output/graph.txt
+# Deduplicate the edges and append to the output file.
+sort -u "$temp_edges" >> "$output_file"
+
+echo '}' >> "$output_file"
+
+rm "$temp_edges"
