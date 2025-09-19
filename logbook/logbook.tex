@@ -60,17 +60,12 @@ Co-Author2 \\ {Place2}
 %
 \NewDocumentCommand{\smartinclude}{ O{raw} m O{} O{\linewidth} O{H} O{} }{%
   \IfFileExists{\detokenize{#2}}{%
+    % ------- FILE EXISTS -------
     \ifthenelse{\equal{#1}{raw}}{%
-      % ----- RAW -----
       \input{\detokenize{#2}}%
-      % Optional label for raw (creates a hyperlink target if hyperref is loaded)
-      \ifthenelse{\isempty{#6}}{}{%
-        \par\noindent\hbox{}% ensure a place to anchor
-        \label{#6}%
-      }%
+      \ifthenelse{\isempty{#6}}{}{\par\noindent\hbox{}\label{#6}}%
     }{%
       \ifthenelse{\equal{#1}{figure}}{%
-        % ----- FIGURE -----
         \begin{figure}[#5]
           \centering
           \includegraphics[width=#4]{\detokenize{#2}}%
@@ -79,7 +74,6 @@ Co-Author2 \\ {Place2}
         \end{figure}
       }{%
         \ifthenelse{\equal{#1}{table}}{%
-          % ----- TABLE -----
           \begin{table}[#5]
             \centering
             \resizebox{#4}{!}{\input{\detokenize{#2}}}%
@@ -87,19 +81,17 @@ Co-Author2 \\ {Place2}
             \ifthenelse{\isempty{#6}}{}{\label{#6}}%
           \end{table}
         }{%
-          % ----- FALLBACK (unknown type) -----
-          \typeout{smartinclude: unknown type '#1'; falling back to raw.}%
+          % Fallback: unknown type → raw
           \input{\detokenize{#2}}%
-          \ifthenelse{\isempty{#6}}{}{\label{#6}}%
+          \ifthenelse{\isempty{#6}}{}{\par\noindent\hbox{}\label{#6}}%
         }%
       }%
     }%
   }{%
-    % ----- MISSING FILE WARNING -----
-    \noindent\textcolor{red}{File ``#2'' does not exist. Most likely, the task has not been run.}%
+    % ------- FILE MISSING: safe message (underscores won't crash) -------
+    \noindent\textcolor{red}{File \texttt{\detokenize{#2}} does not exist. Most likely, the task has not been run.}%
   }%
 }
-
 \definecolor{dkgreen}{rgb}{0,0.6,0}
 \definecolor{gray}{rgb}{0.5,0.5,0.5}
 \definecolor{mauve}{rgb}{0.58,0,0.82}
