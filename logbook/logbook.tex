@@ -1,23 +1,29 @@
 \documentclass{report}
 
 %%METADATA
-\title{Logbook for project}
+\title{Logbook for Project\\
+  Title}
 \author{
-Jonathan Moreno-Medina \\ {UTSA} \and
-coauthors
+Jonathan Moreno-Medina \\ {UTSA} \and  
+Co-Author1 \\ {Place1} \and
+Co-Author2 \\ {Place2}
 }
 \date{}
 
 %%PACKAGES
 \usepackage{graphicx}
+\usepackage{subcaption}
 \usepackage{tabularx}
+\usepackage{array} % for items inside longtables
 \usepackage{setspace}
+\usepackage{pdfpages}
 \usepackage{amsmath,amsthm,amssymb}
 \usepackage[hyphens]{url}
-\usepackage{natbib}
+\usepackage{natbib}\bibliographystyle{plainnat}
 \usepackage[font=normalsize,labelfont=bf]{caption}
 \usepackage[margin=1in]{geometry}
 \usepackage{hyperref}
+\usepackage{pdflscape}
 \hypersetup{colorlinks=true,urlcolor=blue,citecolor=red}
 \usepackage{enumerate}% http://ctan.org/pkg/enumerate %Supports lowercase Roman-letter enumeration
 \usepackage{verbatim} %Package with \begin{comment} environment
@@ -29,10 +35,80 @@ coauthors
 \usepackage{etoc}     %Package with \localtableofcontents
 \usepackage{multicol}
 \usepackage{bm}
+\usepackage{url}
+\usepackage{longtable}
+\usepackage{float}
+\usepackage{xparse}     % for \NewDocumentCommand
+\usepackage{xifthen}    % for \isempty tests and \ifthenelse
+\usepackage{xcolor}     % for colored warning message
+
+% \smartinclude[type][path][caption][width][placement][label]
+%   type      : raw | figure | table   (default = raw)
+%   path      : file path to include (required)
+%   caption   : optional caption (ignored for raw)
+%   width     : width for graphics or resizebox (default = \linewidth)
+%   placement : float placement for figure/table (default = H)
+%   label     : optional label (e.g., fig:..., tab:...)
+%
+% Behavior:
+%   - If file exists:
+%       * raw    -> \input{path}
+%       * figure -> figure env with \includegraphics[width=<width>]{path}, optional \caption
+%       * table  -> table env with \resizebox{<width>}{!}{\input{path}}, optional \caption
+%   - If file does not exist: prints a red inline warning.
+%   - Does not need to escape the underscore es detokenize takes all the path literally. 
+%
+\NewDocumentCommand{\smartinclude}{ O{raw} m O{} O{\linewidth} O{H} O{} }{%
+  \IfFileExists{\detokenize{#2}}{%
+    \ifthenelse{\equal{#1}{raw}}{%
+      % ----- RAW -----
+      \input{\detokenize{#2}}%
+      % Optional label for raw (creates a hyperlink target if hyperref is loaded)
+      \ifthenelse{\isempty{#6}}{}{%
+        \par\noindent\hbox{}% ensure a place to anchor
+        \label{#6}%
+      }%
+    }{%
+      \ifthenelse{\equal{#1}{figure}}{%
+        % ----- FIGURE -----
+        \begin{figure}[#5]
+          \centering
+          \includegraphics[width=#4]{\detokenize{#2}}%
+          \ifthenelse{\isempty{#3}}{}{\caption{#3}}%
+          \ifthenelse{\isempty{#6}}{}{\label{#6}}%
+        \end{figure}
+      }{%
+        \ifthenelse{\equal{#1}{table}}{%
+          % ----- TABLE -----
+          \begin{table}[#5]
+            \centering
+            \resizebox{#4}{!}{\input{\detokenize{#2}}}%
+            \ifthenelse{\isempty{#3}}{}{\caption{#3}}%
+            \ifthenelse{\isempty{#6}}{}{\label{#6}}%
+          \end{table}
+        }{%
+          % ----- FALLBACK (unknown type) -----
+          \typeout{smartinclude: unknown type '#1'; falling back to raw.}%
+          \input{\detokenize{#2}}%
+          \ifthenelse{\isempty{#6}}{}{\label{#6}}%
+        }%
+      }%
+    }%
+  }{%
+    % ----- MISSING FILE WARNING -----
+    \noindent\textcolor{red}{File ``#2'' does not exist. Most likely, the task has not been run.}%
+  }%
+}
 
 \definecolor{dkgreen}{rgb}{0,0.6,0}
 \definecolor{gray}{rgb}{0.5,0.5,0.5}
 \definecolor{mauve}{rgb}{0.58,0,0.82}
+
+\newcolumntype{L}{>{\raggedright\let\newline\\\arraybackslash\hspace{0pt}}m{.3\textwidth}}% for items inside longtable
+% Redefine the X column type to take a width argument
+\newcolumntype{Y}[1]{>{\centering\arraybackslash}p{#1}}
+\newcolumntype{Z}{>{\centering\arraybackslash}X}
+
 
 \lstset{language=bash,
   frame=tb,
@@ -72,6 +148,33 @@ coauthors
 \tableofcontents
 \etocsettocstyle{}{} % from now on only local tocs
 
+%%LOGBOOK ENTRIES: Call notes
+\chapter{Call notes}
+%\input{./entries/cn_20240913.tex}
+%\input{./entries/cn_20240920.tex}
+
+%%LOGBOOK ENTRIES: Research design
+\chapter{Research design}
+
+%%LOGBOOK ENTRIES: Data description
+\chapter{Data description}
+
+\section{Data Cleaning and Initial Filtering}\label{sec:data_clean} 
+%\input{./entries/data_cleaning.tex}
+
+%%LOGBOOK ENTRIES: Research results
+\chapter{Research results}
+
+%%LOGBOOK ENTRIES: FEEDBACK
+\chapter{Feedback}
+
+%%LOGBOOK BIBLIOGRAPHY
+\chapter{References}
+\begin{singlespace}
+  %\bibliographystyle{apalike}
+  \bibliography{bib_project.bib}  
+\end{singlespace}
+
 %%NON-CHRONOLOGICAL ENTRIES
 \chapter{Research infrastructure}
 \input{entries/researchinfrastructure.tex}
@@ -83,7 +186,7 @@ coauthors
 
 \section{Task assignments on Github} \input{./entries/github_task.tex}
 \section{Sharing code via Git} \input{./entries/git_together.tex}
-\section{Reviewing code on Github or Bitbucket} \input{./entries/codereview.tex}
+\section{Reviewing code on BitBucket} \input{./entries/codereview.tex}
 \section{Sharing results via the logbook} \input{./entries/logbookexplained.tex}
 
 \section{Unix/Linux shell commands} \input{./entries/unixshelltips.tex}
@@ -93,22 +196,12 @@ coauthors
 \section{Notes on Stata} \input{./entries/statanotes.tex}
 \section{Running Windows} \input{./entries/windows.tex}
 
-%%LOGBOOK ENTRIES: Call notes
-\chapter{Call notes}
 
-%%LOGBOOK ENTRIES: Research design
-\chapter{Research design}
+%%LOGBOOK OLD PRESENTATION
+%\chapter{Old presentation} %%\input{./entries/old_pres_slides.tex} Latex code if needed to copy paste
+%Latex code at \texttt{./entries/old\_pres\_slides.tex}
+%\includepdf[pages=-,nup=1x2,frame,scale=0.9,pagecommand={}]{./entries/old_pres.pdf}
 
-%%LOGBOOK ENTRIES: Data description
-\chapter{Data description}
-
-%%LOGBOOK ENTRIES: Research results
-\chapter{Research results}
-
-%%LOGBOOK ENTRIES: FEEDBACK
-\chapter{Feedback}
-
-%%LOGBOOK BIBLIOGRAPHY
 
 
 \end{document}
