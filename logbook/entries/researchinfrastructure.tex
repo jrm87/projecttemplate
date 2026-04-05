@@ -8,13 +8,15 @@ It describes our research infrastructure in terms of three types of issues:
 \item \textbf{Computing}: geeky details
 \end{itemize}
 
-\textcolor{red}{Note:} Some sections need to be updated to reflect my own workflow - 
-how to integrate Dropbox with symlinks. 
-
 We organize the project as a series of tasks, so our organization of code and data takes a task-based perspective.
 After writing code, we automate its execution via \texttt{make}.
 We track our code (and the rest of the project) using \texttt{Git}, a version control system.
-Collaboration occurs via GitHub issues for task assignments, GitHubcode reviews, and logbook entries that share research designs and results.
+Collaboration occurs via GitHub issues for task assignments, GitHub code reviews, and logbook entries that share research designs and results.
+Quality is enforced via GitHub Actions CI/CD checks on every pull request.
+Code can run locally, on Duke's DCC cluster, or on TACC's Lonestar6 cluster,
+with \texttt{generic.make} auto-detecting the environment.
+Containerized environments (Apptainer/Singularity) ensure reproducible package versions across machines.
+An agentic workflow using Claude Code provides AI-assisted planning, code review, and session continuity.
 
 Use a good text editor like
 \href{https://www.sublimetext.com/}{SublimeText},

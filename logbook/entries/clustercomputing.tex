@@ -1,0 +1,125 @@
+This section covers running tasks on high-performance computing (HPC) clusters.
+The template supports two clusters out of the box: Duke's DCC and TACC's Lonestar6,
+plus local execution on your laptop/desktop.
+
+\subsection{Environment auto-detection}
+
+The \texttt{generic.make} file automatically detects the execution environment:
+
+\begin{lstlisting}[language=make]
+IS_TACC = 1  # when TACC_SYSTEM env var is set
+IS_DCC  = 1  # when SLURM_CLUSTER_NAME = "dcc"
+IS_HPC  = 1  # when either cluster is detected
+\end{lstlisting}
+
+You can override detection: \texttt{make IS\_TACC=0} forces local execution on TACC.
+
+\subsection{SLURM basics}
+
+SLURM is the job scheduler used by both DCC and TACC.
+Key commands:
+\begin{itemize}
+	\item \texttt{sbatch job.slurm}: submit a batch job (returns immediately).
+	\item \texttt{srun --pty bash}: start an interactive session.
+	\item \texttt{squeue -u \$USER}: list your running/pending jobs.
+	\item \texttt{sacct -u \$USER -S now-2days}: job history (past 2 days).
+	\item \texttt{scancel <job\_id>}: cancel a job.
+\end{itemize}
+
+A typical SLURM script:
+\begin{lstlisting}[language=bash]
+#!/bin/bash
+#SBATCH --job-name=task_name
+#SBATCH --partition=common        # DCC: common, scavenger; TACC: gpu-a100
+#SBATCH --time=04:00:00
+#SBATCH --mem=100G
+#SBATCH --cpus-per-task=4
+#SBATCH --output=slurm_logs/%j.out
+#SBATCH --error=slurm_logs/%j.err
+
+# DCC: use container
+singularity exec --pwd "$PWD" \
+  --bind "$REPO_ROOT:$REPO_ROOT" "$IMG" \
+  Rscript code/my_script.R --arg1 val1
+
+# TACC: use conda
+source /work/<project>/<user>/ls6/miniconda3/etc/profile.d/conda.sh
+conda activate my_env
+python code/my_script.py --arg1 val1
+\end{lstlisting}
+
+\subsection{Container execution (DCC)}
+
+On DCC, R tasks run inside a Singularity container to ensure reproducible package versions.
+The container image (\texttt{.sif} file) is stored at a shared path.
+
+Key flags for \texttt{singularity exec}:
+\begin{itemize}
+	\item \texttt{--pwd "\$PWD"}: set working directory inside the container.
+	\item \texttt{--bind "\$REPO\_ROOT:\$REPO\_ROOT"}: mount the repository so symlinks resolve.
+\end{itemize}
+
+The \texttt{generic.make} wrappers \texttt{RUN\_CMD} and \texttt{RSCRIPT} handle this automatically.
+
+\subsection{Conda execution (TACC)}
+
+On TACC, conda environments manage package dependencies.
+Conda lives under a project-specific path on \texttt{/work/}, e.g.:
+\begin{lstlisting}[language=bash]
+/work/<project_num>/<user>/ls6/miniconda3/
+\end{lstlisting}
+\noindent not in the home directory (which has limited quota).
+
+\subsection{Job dependency chaining}
+
+For multi-step pipelines within a single task, use SLURM dependencies:
+
+\begin{lstlisting}[language=bash]
+job1=$(sbatch --parsable step1.slurm)
+job2=$(sbatch --parsable --dependency=afterok:$job1 step2.slurm)
+job3=$(sbatch --parsable --dependency=afterok:$job2 step3.slurm)
+\end{lstlisting}
+
+The \texttt{slurm\_helpers.sh} script provides functions for this:
+\texttt{submit\_slurm\_job}, \texttt{submit\_job\_chain},
+and \texttt{wait\_for\_jobs}.
+
+\subsection{Two execution patterns}
+
+\textbf{Pattern 1: Submit \& Continue.}
+The Makefile submits SLURM jobs and returns immediately.
+Downstream jobs use \texttt{--dependency=afterok} to chain.
+The user re-runs \texttt{make} after jobs complete.
+This is the most common pattern.
+
+\textbf{Pattern 2: Submit \& Wait.}
+The Makefile submits a job and blocks until completion (using \texttt{sbatch --wait}
+or polling via \texttt{squeue}).
+After completion, local post-processing runs.
+Use this when the entire pipeline must complete in one \texttt{make} invocation.
+
+\subsection{Data synchronization}
+
+The \texttt{sync\_from\_cluster.sh} script downloads task outputs from HPC to your local machine:
+
+\begin{lstlisting}[language=bash]
+./sync_from_cluster.sh --tacc task_name     # Download output/ from TACC
+./sync_from_cluster.sh --dcc task_name      # Download output/ from DCC
+./sync_from_cluster.sh --list --tacc        # List available outputs
+./sync_from_cluster.sh --dry-run task_name  # Preview transfer
+\end{lstlisting}
+
+After syncing, run \texttt{make} for downstream tasks to recreate local symlinks.
+
+\subsection{Interactive sessions}
+
+For debugging or iterating on code:
+\begin{lstlisting}[language=bash]
+# DCC: interactive container session
+make -C tasks/<task_name> INTERACTIVE=1
+
+# TACC: interactive node
+srun -p gpu-a100 --time=02:00:00 --pty bash
+source /work/<project>/<user>/ls6/miniconda3/etc/profile.d/conda.sh
+conda activate my_env
+\end{lstlisting}

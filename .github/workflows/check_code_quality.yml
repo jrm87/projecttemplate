@@ -1,0 +1,156 @@
+name: Check Code Quality
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - 'tasks/**'
+  workflow_dispatch:
+
+jobs:
+  code-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: No hardcoded user paths in production scripts
+        run: |
+          echo "=== Checking for hardcoded user paths ==="
+          FAIL=0
+          # Check R scripts
+          for f in $(find tasks/*/code -name "*.R" -o -name "*.r" 2>/dev/null); do
+            if echo "$f" | grep -q "temp/\|output/"; then continue; fi
+            if grep -n "/hpc/group/[a-z]" "$f" | grep -v "^[[:space:]]*#"; then
+              echo "ERROR: $f contains hardcoded HPC path"
+              FAIL=1
+            fi
+            if grep -n "/Users/[a-z]" "$f" | grep -v "^[[:space:]]*#"; then
+              echo "ERROR: $f contains hardcoded local path"
+              FAIL=1
+            fi
+            if grep -n "/home/[a-z]" "$f" | grep -v "^[[:space:]]*#"; then
+              echo "ERROR: $f contains hardcoded home path"
+              FAIL=1
+            fi
+            if grep -n "/work/[0-9]" "$f" | grep -v "^[[:space:]]*#"; then
+              echo "ERROR: $f contains hardcoded TACC /work/ path"
+              FAIL=1
+            fi
+            if grep -n "setwd(" "$f" | grep -v "^[[:space:]]*#"; then
+              echo "ERROR: $f uses setwd()"
+              FAIL=1
+            fi
+          done
+          # Check Python scripts
+          for f in $(find tasks/*/code -name "*.py" 2>/dev/null); do
+            if echo "$f" | grep -q "temp/\|output/"; then continue; fi
+            if grep -n "/Users/[a-z]" "$f" | grep -v "^[[:space:]]*#"; then
+              echo "ERROR: $f contains hardcoded local path"
+              FAIL=1
+            fi
+            if grep -n "/home/[a-z]" "$f" | grep -v "^[[:space:]]*#"; then
+              echo "ERROR: $f contains hardcoded home path"
+              FAIL=1
+            fi
+            if grep -n "/work/[0-9]" "$f" | grep -v "^[[:space:]]*#"; then
+              echo "ERROR: $f contains hardcoded TACC /work/ path"
+              FAIL=1
+            fi
+          done
+          # Check Stata scripts
+          for f in $(find tasks/*/code -name "*.do" 2>/dev/null); do
+            if grep -n "/Users/[a-z]" "$f" | grep -v "^[[:space:]]*\*"; then
+              echo "ERROR: $f contains hardcoded local path"
+              FAIL=1
+            fi
+            if grep -n "/home/[a-z]" "$f" | grep -v "^[[:space:]]*\*"; then
+              echo "ERROR: $f contains hardcoded home path"
+              FAIL=1
+            fi
+          done
+          if [ "$FAIL" -eq 1 ]; then
+            echo ""
+            echo "FAILED: Production scripts must not contain"
+            echo "hardcoded user paths or setwd(). Use optparse/argparse"
+            echo "arguments or relative paths instead."
+            exit 1
+          fi
+          echo "PASSED"
+
+      - name: No multi-output rules without sentinel files
+        run: |
+          echo "=== Checking for multi-output Make rules ==="
+          FAIL=0
+          for mf in tasks/*/Makefile; do
+            [ -f "$mf" ] || continue
+            # Join backslash-continued lines, then find rule lines
+            # with 2+ output/ targets before the colon.
+            awk '
+            /\\$/ { buf = buf substr($0, 1, length($0)-1); next }
+            { if (buf != "") { $0 = buf $0; buf = "" } }
+            /^[^#\t]/ && /:/ {
+              split($0, parts, ":")
+              targets = parts[1]
+              n = gsub(/output\//, "&", targets)
+              if (n >= 2) {
+                print FILENAME ": " $0
+              }
+            }' "$mf" |
+            while IFS= read -r line; do
+              echo "ERROR: $line"
+              echo "  Multi-output rule runs the recipe once per target in Make < 4.3."
+              echo "  Use a sentinel file pattern instead. See tasks/WORKFLOW.md."
+              FAIL=1
+            done
+          done
+          if [ "$FAIL" -eq 1 ]; then
+            echo ""
+            echo "FAILED: Multi-output rules must use sentinel files."
+            exit 1
+          fi
+          echo "PASSED"
+
+      - name: Production scripts have Makefile targets
+        run: |
+          echo "=== Checking Makefile coverage ==="
+          WARNINGS=0
+          for task_dir in tasks/*/; do
+            if [ ! -f "$task_dir/Makefile" ]; then continue; fi
+            for script in "$task_dir"/code/*.R "$task_dir"/code/*.r \
+                          "$task_dir"/code/*.py "$task_dir"/code/*.do; do
+              if [ ! -f "$script" ]; then continue; fi
+              basename=$(basename "$script")
+              if ! grep -q "$basename" "$task_dir/Makefile"; then
+                echo "WARNING: $script not referenced in $task_dir/Makefile"
+                WARNINGS=$((WARNINGS + 1))
+              fi
+            done
+          done
+          if [ "$WARNINGS" -gt 0 ]; then
+            echo ""
+            echo "$WARNINGS script(s) not referenced in Makefiles."
+            echo "Ensure all production scripts have make targets."
+          fi
+          echo "DONE (warnings only, no failure)"
+
+      - name: Report files should not do heavy computation
+        run: |
+          echo "=== Checking report data processing ==="
+          WARNINGS=0
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD \
+            -- 'tasks/*/code/*.qmd' 'tasks/*/code/*.Rmd' 2>/dev/null || true)
+          for f in $CHANGED; do
+            if [ ! -f "$f" ]; then continue; fi
+            WRANGLING=$(grep -c "fread\|read_parquet\|merge(\|left_join\|inner_join\|:=\|mutate(\|filter(" "$f" 2>/dev/null || echo 0)
+            if [ "$WRANGLING" -gt 50 ]; then
+              echo "WARNING: $f has ~$WRANGLING lines of data wrangling"
+              echo "  Consider graduating heavy processing to a standalone script"
+              WARNINGS=$((WARNINGS + 1))
+            fi
+          done
+          if [ "$WARNINGS" -gt 0 ]; then
+            echo ""
+            echo "$WARNINGS report file(s) with heavy data processing."
+            echo "See tasks/WORKFLOW.md for graduation guidelines."
+          fi
+          echo "DONE (warnings only, no failure)"

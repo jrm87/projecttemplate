@@ -310,3 +310,50 @@ A note on running Makefiles in a cluster computing environment that has a job sc
 	\item Read \url{http://wresch.github.io/2012/11/01/qsub-submit-jobs-from-makefile.html} for more discussion of \texttt{qsub} and the \texttt{sbatch} \href{https://slurm.schedmd.com/sbatch.html}{manual} for discussion of \texttt{-W} or \texttt{--wait}.
 	\item I am not sure about the best practice for the Torque scheduler.
 \end{itemize}
+
+\subsection{The generic.make shared infrastructure}
+
+The file \texttt{tasks/generic.make} provides shared Makefile infrastructure
+that every task should include via \texttt{include ../generic.make}.
+It provides:
+
+\begin{itemize}
+	\item \textbf{Environment auto-detection}: variables \texttt{IS\_TACC}, \texttt{IS\_DCC}, and \texttt{IS\_HPC} are set automatically based on environment variables and available commands.
+	\item \textbf{Standard directory creation}: rules for \texttt{input}, \texttt{output}, \texttt{temp}, \texttt{log}, \texttt{slurm\_logs}, and \texttt{.jobids}.
+	\item \textbf{Upstream dependency resolution}: the \texttt{../ \%} pattern rule auto-builds missing upstream outputs.
+	\item \textbf{Language wrappers}: \texttt{RSCRIPT}, \texttt{PYTHON}, and \texttt{STATA} macros that adapt to the execution environment (container on DCC, conda on TACC, direct on local).
+	\item \textbf{SLURM wrappers}: \texttt{run-or-submit} submits via SLURM on HPC or runs directly locally. \texttt{RUN\_CMD} wraps commands inside a Singularity container.
+	\item \textbf{Status targets}: \texttt{make status} shows recent SLURM jobs and output files; \texttt{make logs} tails the latest SLURM log.
+\end{itemize}
+
+Override defaults per-task by setting variables before the \texttt{include} line:
+\begin{lstlisting}[language=make]
+TIME = 08:00:00
+MEM  = 200G
+CPUS = 8
+include ../generic.make
+\end{lstlisting}
+
+\subsection{Sentinel files for multi-output rules}
+
+GNU Make versions before 4.3 treat \texttt{a b: deps} as two separate rules
+with the same recipe, running it once per target.
+This causes duplicate SLURM job submissions.
+The solution is a sentinel (stamp) file:
+
+\begin{lstlisting}[language=make]
+# WRONG - submits two SLURM jobs:
+output/params.rds output/beliefs.csv: code/script.R
+	$(call RSCRIPT,code/script.R)
+
+# RIGHT - submits one job:
+output/.step_done: code/script.R
+	$(call RSCRIPT,code/script.R)
+	touch $@
+output/params.rds: output/.step_done
+output/beliefs.csv: output/.step_done
+\end{lstlisting}
+
+Name sentinels \texttt{output/.<step>\_done}.
+The \texttt{clean} target's \texttt{rm -rf output/} removes them automatically.
+See \texttt{tasks/WORKFLOW.md} for the full pattern and policy on reports vs production code.

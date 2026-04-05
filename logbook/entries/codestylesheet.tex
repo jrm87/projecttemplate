@@ -95,6 +95,46 @@ I tend to write package-installation scripts in a distinct task that covers all 
 The best reason to concentrate everything in one task is that oftentimes package installation requires internet access:
 on RCC, login nodes can touch the external internet, while compute nodes cannot.
 
+\subsection{Code quality rules enforced on pull requests}
+
+The following rules are enforced automatically via GitHub Actions CI/CD checks.
+Violations block the PR from merging.
+
+\begin{enumerate}
+	\item \textbf{No hardcoded user paths.}
+	Production scripts (R, Python, Stata) must not contain paths like
+	\texttt{/Users/<user>/}, \texttt{/home/<user>/}, \texttt{/hpc/group/}, or \texttt{/work/<num>/}.
+	Use command-line arguments (\texttt{optparse} in R, \texttt{argparse} in Python)
+	or relative paths instead.
+	\item \textbf{No \texttt{setwd()} in R.}
+	Use \texttt{here::here()} for project-relative paths or pass paths via arguments.
+	\item \textbf{Sentinel files for multi-output Makefile rules.}
+	See the Make section for the pattern.
+	\item \textbf{Production scripts must have Makefile targets} (warning).
+	Every \texttt{.R}, \texttt{.py}, or \texttt{.do} file in \texttt{code/} should be referenced
+	in the task's Makefile.
+	\item \textbf{Reports should not do heavy computation} (warning).
+	Quarto/RMarkdown files with more than 50 lines of data wrangling should graduate
+	the computation to a standalone production script.
+\end{enumerate}
+
+\subsection{Reports vs.\ production code}
+
+Quarto reports (\texttt{.qmd}) are for communication; standalone scripts are for production.
+A report should \emph{read} from \texttt{input/} and render a human-readable document.
+If the code inside a report computes something that the paper or downstream tasks need,
+extract it into a standalone script in \texttt{code/} with a corresponding Makefile target.
+See \texttt{tasks/WORKFLOW.md} for the full graduation process.
+
+\subsection{Container-aware coding}
+
+When code runs inside a Singularity/Apptainer container on HPC:
+\begin{itemize}
+	\item The repository is bind-mounted at its real path (\texttt{--bind \$REPO\_ROOT:\$REPO\_ROOT}).
+	\item Symlinks must use absolute paths via \texttt{\$(abspath \$<)} so they resolve inside the container.
+	\item User-library R packages (\texttt{\textasciitilde/R/...}) are a temporary workaround; prefer adding packages to the container definition.
+\end{itemize}
+
 \subsection{Limit lines to at most 100 characters}
 
 Files should have lines no longer than 100 characters in length.

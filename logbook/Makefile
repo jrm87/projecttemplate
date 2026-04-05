@@ -1,4 +1,4 @@
-logbookentries := $(shell grep '\\input{.*entries' logbook.tex | sed 's/^.*\\input{\(.*\.tex\).*/\1/')
+logbookentries := $(shell grep -v '^[[:space:]]*%%' logbook.tex | grep -v '^[[:space:]]*%' | grep '\\input{.*entries' | sed 's/^.*\\input{\(.*\.tex\).*/\1/')
 
 all: logbook.pdf
 

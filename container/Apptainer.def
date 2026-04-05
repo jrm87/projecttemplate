@@ -1,0 +1,96 @@
+# Apptainer/Singularity Container Definition
+# CUSTOMIZE: Adjust packages and versions for your project
+#
+# Build:
+#   apptainer build project.sif Apptainer.def
+#
+# Test locally:
+#   apptainer exec project.sif Rscript -e 'sessionInfo()'
+#
+# Deploy to DCC:
+#   scp project.sif dcc:/opt/apps/containers/community/<user>/
+#
+# Deploy to TACC:
+#   scp project.sif ls6:/work/<project_num>/<user>/
+
+Bootstrap: docker
+From: rocker/r-ver:4.4.0
+
+%labels
+    Author CUSTOMIZE
+    Version 1.0
+    Description Research project container
+
+%post
+    # System dependencies
+    apt-get update && apt-get install -y --no-install-recommends \
+        libcurl4-openssl-dev \
+        libssl-dev \
+        libxml2-dev \
+        libfontconfig1-dev \
+        libharfbuzz-dev \
+        libfribidi-dev \
+        libfreetype6-dev \
+        libpng-dev \
+        libtiff5-dev \
+        libjpeg-dev \
+        libgdal-dev \
+        libgeos-dev \
+        libproj-dev \
+        libudunits2-dev \
+        cmake \
+        git \
+        wget \
+        && rm -rf /var/lib/apt/lists/*
+
+    # ---- Core R Packages ----
+    Rscript -e 'install.packages(c(
+        "data.table",
+        "tidyverse",
+        "optparse",
+        "here",
+        "janitor",
+        "arrow",
+        "fixest",
+        "broom",
+        "modelsummary"
+    ), repos="https://cloud.r-project.org")'
+
+    # ---- Spatial packages (uncomment if needed) ----
+    # Rscript -e 'install.packages(c(
+    #     "sf",
+    #     "tigris",
+    #     "tidycensus"
+    # ), repos="https://cloud.r-project.org")'
+
+    # ---- Visualization ----
+    Rscript -e 'install.packages(c(
+        "ggplot2",
+        "cowplot",
+        "kableExtra",
+        "gt"
+    ), repos="https://cloud.r-project.org")'
+
+    # ---- TinyTeX for LaTeX output ----
+    Rscript -e 'install.packages("tinytex", repos="https://cloud.r-project.org")'
+    Rscript -e 'tinytex::install_tinytex(force=TRUE)'
+    # Add common LaTeX packages
+    Rscript -e 'tinytex::tlmgr_install(c(
+        "amsmath", "geometry", "fancyvrb", "hyperref",
+        "listings", "longtable", "booktabs", "fontspec",
+        "unicode-math", "caption", "float", "multirow",
+        "enumitem", "xcolor", "natbib", "threeparttable"
+    ))'
+
+    # ---- Python (uncomment if needed) ----
+    # apt-get update && apt-get install -y python3 python3-pip
+    # pip3 install numpy pandas scipy
+
+    # ---- CUSTOMIZE: Add your project-specific packages below ----
+
+%environment
+    export LC_ALL=C
+    export LANG=C
+
+%runscript
+    exec Rscript "$@"

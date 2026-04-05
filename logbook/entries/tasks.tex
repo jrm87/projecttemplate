@@ -135,3 +135,40 @@ I've certainly produced drafts where the same number takes different values in a
 All output is produced by tasks.
 Our task workflow produces the final paper.
 See Patrick Ball at \href{https://www.youtube.com/watch?v=ZSunU9GQdcI&t=40m27s}{40:27}.
+
+\subsection{Task documentation}
+
+Every task should have a \texttt{readme.md} file documenting:
+\begin{itemize}
+	\item Purpose: what the task does and why it exists.
+	\item Inputs: what files it reads from \texttt{input/}, with upstream task names.
+	\item Outputs: what files it produces in \texttt{output/}, with brief descriptions.
+	\item Code: what each script in \texttt{code/} does.
+	\item Dependencies: computational requirements (memory, time, GPU).
+\end{itemize}
+
+\subsection{CI/CD validation of tasks}
+
+GitHub Actions workflows validate the pipeline on every pull request:
+\begin{itemize}
+	\item \textbf{check\_makefiles}: runs \texttt{make -n} (dry run) on every task Makefile to catch syntax errors and missing prerequisites.
+	\item \textbf{check\_code\_quality}: enforces rules such as no hardcoded user paths, no \texttt{setwd()}, sentinel files for multi-output rules, and Makefile coverage of production scripts.
+	\item \textbf{check\_nontask\_makefiles}: validates paper, slides, and logbook Makefiles.
+\end{itemize}
+
+\subsection{Agentic workflow integration}
+
+Claude Code can be used as an agentic assistant within the task-based workflow.
+The project includes a \texttt{CLAUDE.md} file at the repository root that documents
+the project structure, conventions, and quality rules for the AI agent.
+Custom skills in \texttt{.claude/commands/} provide structured workflows:
+\begin{itemize}
+	\item \texttt{/review-plan}: spawns an independent agent to critique a plan without conversational bias.
+	\item \texttt{/review-code}: checks code for portability, reproducibility, and pipeline integrity.
+	\item \texttt{/done}: captures session outcomes and handoff notes for continuity.
+	\item \texttt{/prompt}: restructures stream-of-consciousness input into structured prompts.
+\end{itemize}
+The key principle from Blattman's agentic workflow guidelines:
+separate planning from reviewing.
+An AI reviewing its own plan in the same conversation has systematic self-bias.
+Always use a fresh agent for review.

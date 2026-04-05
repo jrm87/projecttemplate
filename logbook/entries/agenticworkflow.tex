@@ -1,0 +1,110 @@
+This section describes how to use Claude Code as an AI assistant within the
+task-based research workflow.
+The approach draws on Chris Blattman's agentic workflow guidelines
+(\url{https://claudeblattman.com/essentials/})
+and adapts them for the Make-based pipeline architecture.
+
+\subsection{The CLAUDE.md knowledge base}
+
+Every project should have a \texttt{CLAUDE.md} file at the repository root.
+This file is automatically loaded at the start of every Claude Code session
+and serves as the AI's knowledge base about the project.
+
+Key sections to include:
+\begin{itemize}
+	\item Project overview: what the project does, who works on it.
+	\item Repository structure: where things live.
+	\item Build and run instructions: how to execute tasks locally and on HPC.
+	\item Task directory convention: the input/code/output structure.
+	\item Code quality rules: what the CI/CD checks enforce.
+	\item Commit conventions: message prefixes and formatting.
+\end{itemize}
+
+Keep \texttt{CLAUDE.md} under 200 lines.
+Use \texttt{<!-- CUSTOMIZE -->} markers for sections that change per-project.
+Test it by asking Claude ``What do you know about this project?''
+
+\subsection{The Prompt-Plan-Review-Revise loop}
+
+This is the core agentic workflow, adapted from Blattman's four-step process:
+
+\begin{enumerate}
+	\item \textbf{Prompt}: structure your thinking.
+	Use \texttt{/prompt} to convert stream-of-consciousness into a structured prompt
+	with Role, Context, Task, Constraints, Output Format, and Bookend sections.
+	\item \textbf{Plan}: use plan mode (\texttt{Shift+Tab}).
+	Claude reads files and designs an implementation approach,
+	but cannot execute changes until you approve.
+	For non-trivial tasks, assign multiple perspectives to surface hidden assumptions.
+	\item \textbf{Review}: use \texttt{/review-plan} to spawn an independent agent.
+	This fresh agent critiques the plan without conversational self-bias.
+	It uses Red/Yellow/Green feedback to flag blocking issues, risks, and strengths.
+	Run review multiple times---each round catches different problem categories.
+	\item \textbf{Revise}: incorporate feedback and iterate.
+	Only approve the plan when Red items are resolved.
+\end{enumerate}
+
+The key principle: \textbf{separate planning from reviewing.}
+Claude reviewing its own plan in the same conversation is like asking someone
+to peer-review their own paper.
+
+\subsection{Custom skills}
+
+The project includes custom Claude Code skills in \texttt{.claude/commands/}:
+
+\begin{description}
+	\item[\texttt{/review-plan}]
+	Spawns a fresh agent to critique the current plan.
+	Uses Red (blocking), Yellow (risks), Green (strengths) format.
+	Provides a Verdict: Approve / Approve with Changes / Revise.
+	\item[\texttt{/review-code}]
+	Research-specific code review checking reproducibility,
+	portability (local + DCC + TACC), pipeline integrity,
+	and code quality.
+	\item[\texttt{/done}]
+	End-of-session wrap-up.
+	Captures what was accomplished, decisions made, open questions,
+	and writes a handoff note to \texttt{.claude/handoff.md} for next-session continuity.
+	Generates a project manager update.
+	\item[\texttt{/prompt}]
+	Restructures stream-of-consciousness input into the six-section prompt format.
+\end{description}
+
+\subsection{Session continuity}
+
+Research projects span many sessions.
+Use \texttt{/done} at the end of each session to write a handoff note.
+The next session can read \texttt{.claude/handoff.md} to understand where things left off.
+
+The project manager update template (from \texttt{CLAUDE.md}):
+\begin{lstlisting}[language=bash]
+**PROJECT update**: <1-3 sentence summary>
+
+**Next steps**:
+1. <step>
+2. <step>
+\end{lstlisting}
+
+\subsection{Design principles for agentic research}
+
+From Blattman's guidelines, adapted for our workflow:
+
+\begin{enumerate}
+	\item \textbf{One skill, one job.}
+	Focused skills outperform multi-purpose ones.
+	\item \textbf{Default to useful action.}
+	Skills should work with no arguments; flags add precision.
+	\item \textbf{Fail gracefully.}
+	When files or tools are unavailable, explain what's missing
+	and proceed with remaining functionality.
+	\item \textbf{Phased execution.}
+	Break complex workflows into phases with user checkpoints.
+	Discovery $\to$ Analysis $\to$ Proposal $\to$ Implementation $\to$ Verification.
+	\item \textbf{Every skill takes iteration.}
+	Expect about three weeks of refinement per skill.
+	Start minimal and improve based on actual usage.
+	\item \textbf{Start permissive, tighten over time.}
+	For confirmation guidelines (when should Claude ask before acting?),
+	start by letting Claude proceed and add guardrails as you learn
+	where mistakes happen.
+\end{enumerate}

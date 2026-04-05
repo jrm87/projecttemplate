@@ -1,4 +1,4 @@
-# Ignore common LaTeX intermediate and output files
+# ── LaTeX intermediate and output files ──
 *.aux
 *.bbl
 *.blg
@@ -16,10 +16,30 @@
 *.snm
 *.vrb
 
-# Ignore input and output directories
+# ── Task directories (generated/machine-specific) ──
 tasks/*/input
 tasks/*/output
+tasks/*/temp
+tasks/*/log
+tasks/*/.jobids
+tasks/*/slurm_logs
 
-#ignore logbook pdf
+# ── Logbook PDF (compiled artifact) ──
 logbook/logbook.pdf
+
+# ── R / Python artifacts ──
 .Rproj.user
+__pycache__/
+*.pyc
+
+# ── Environment and secrets ──
+.env
+.secrets
+*.sif
+
+# ── OS files ──
+.DS_Store
+Thumbs.db
+
+# ── Claude Code session files ──
+.claude/handoff.md
